@@ -157,7 +157,7 @@ st.set_page_config(
 2. 자동화 스케줄링 설정
 3. 모바일 접근 테스트
 
-**구글 시트 URL**: https://docs.google.com/spreadsheets/d/1gmTyWcod41faSyInqsFS9iwRqnBloA2klc8SjvZCPIk
+**구글 시트 URL**: https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID_HERE
 
 **로컬 대시보드**: http://localhost:8501
 
@@ -336,5 +336,5 @@ stock_summary = stock_summary.nlargest(top_n, '총수익_만원')
 ✅ **3단계 정밀 드릴다운 분석 시스템 구축 완료**
 ✅ 모든 UI 버그(폰트 깨짐, 스크롤 오프셋 등) 수정 및 최적화 완료
 
-**구글 시트 URL**: https://docs.google.com/spreadsheets/d/1gmTyWcod41faSyInqsFS9iwRqnBloA2klc8SjvZCPIk
+**구글 시트 URL**: https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID_HERE
 **GitHub 저장소**: https://github.com/20eung/Kiwoom-Profit-Visualizer (업로드 예정)
