@@ -19,7 +19,8 @@ Kiwoom-Profit-Visualizer/
 
 ## 🎯 주요 기능
 
-- ✅ **키움 REST API**를 통한 실현손익 데이터 자동 수집 (64비트 Python 사용 가능)
+- ✅ **키움 REST API** 연동을 통한 실현손익 데이터 수집 (64비트 Python 사용 가능)
+- ✅ **원클릭 동기화**: 대시보드 내 **Sync** 버튼으로 간편하게 최신 데이터 업데이트
 - ✅ **구글 시트**를 데이터베이스로 활용 (날짜 기준 Upsert)
 - ✅ **프리미엄 UI V2.0**: 글래스모피즘(Glassmorphism) 기반의 현대적이고 세련된 디자인
 - ✅ **3단계 드릴다운**: 연도별 → 월별 → 일별로 이어지는 정밀한 데이터 분석
@@ -77,22 +78,14 @@ pip install -r requirements.txt
    - 새 스프레드시트 생성: "키움_실현손익_데이터"
    - 서비스 계정 이메일에 **편집자** 권한 부여
 
-### 2단계: 데이터 수집
+### 2단계: 데이터 수집 및 동기화
 
-```bash
-# 테스트 모드 (샘플 데이터)
-python run_pipeline.py --test
+본 프로젝트는 대시보드 내에서 직접 데이터를 수집하고 동기화하는 기능을 제공합니다.
 
-# 실제 데이터 수집 (키움 REST API 사용)
-python run_pipeline.py --credentials credentials.json
+1. **로컬 실행**: `python streamlit_app.py` 명령으로 대시보드를 실행합니다.
+2. **동기화**: 사이드바의 **🚀 Sync Kiwoom API** 버튼을 클릭하여 최신 실현손익을 수집하고 구글 시트에 업데이트합니다.
 
-# 또는 명령줄에서 직접 App Key 지정
-python run_pipeline.py \
-  --app-key YOUR_APP_KEY \
-  --app-secret YOUR_APP_SECRET \
-  --account YOUR_ACCOUNT \
-  --credentials credentials.json
-```
+> **참고**: 커맨드라인 환경에서 직접 실행하려면 `python run_pipeline.py`를 사용할 수 있습니다.
 
 ### 3단계: Streamlit 대시보드 배포
 
@@ -137,22 +130,12 @@ client_x509_cert_url = "YOUR_CERT_URL"
 
 ## 📱 사용 방법
 
-### 데이터 수집 자동화
+### 실시간 데이터 업데이트 (Sync)
 
-#### 윈도우 작업 스케줄러
+대시보드 사이드바의 **Settings** 메뉴에서 두 가지 업데이트 방식을 제공합니다:
 
-1. `run_daily.bat.template`을 `run_daily.bat`으로 복사
-2. 윈도우 작업 스케줄러 실행
-3. "기본 작업 만들기" 클릭
-4. 트리거: 매일 오후 4시 (시장 종료 후)
-5. 동작: `run_daily.bat` 실행
-
-#### Mac/Linux Cron
-
-```bash
-# crontab -e
-0 16 * * 1-5 cd /path/to/Kiwoom-Profit-Visualizer && ./venv/bin/python run_pipeline.py --credentials credentials.json
-```
+1. **🔄 Refresh Dashboard**: 구글 시트에 이미 저장된 데이터를 화면에 다시 불러옵니다.
+2. **🚀 Sync Kiwoom API**: 키움증권 서버에서 최근 15일간의 새로운 거래 내역을 수집하여 구글 시트에 저장하고 화면을 갱신합니다.
 
 ### 모바일/PC에서 대시보드 접속
 
