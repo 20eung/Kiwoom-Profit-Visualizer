@@ -6,15 +6,17 @@
 
 ```
 Kiwoom-Profit-Visualizer/
-├── kiwoom_collector.py        # 키움 REST API 데이터 수집 모듈
-├── google_sheet_manager.py    # 구글 시트 연동 모듈
-├── streamlit_app.py            # Streamlit 대시보드
-├── run_pipeline.py             # 통합 실행 스크립트
-├── config.py                   # 설정 파일
-├── requirements.txt            # Python 패키지 목록
-├── requirements_windows.txt    # 윈도우용 패키지 목록
-├── .gitignore                  # Git 제외 파일
-└── README.md                   # 프로젝트 문서
+├── .streamlit/
+│   └── secrets.toml.example     # Streamlit Secrets 설정 예시 (API 키, 구글 인증 등)
+├── docs/                        # 키움 API 관련 참고 문서
+├── kiwoom_collector.py         # 키움 REST API 데이터 수집 모듈
+├── google_sheet_manager.py     # 구글 시트 연동 및 데이터 관리 모듈
+├── streamlit_app.py             # Streamlit 대시보드 (메인 애플리케이션)
+├── run_pipeline.py              # CLI 기반 데이터 수집/업로드 파이프라인
+├── config.py.example            # 공통 환경 설정값 예시
+├── requirements.txt             # Python 패키지 의존성 목록
+├── WALKTHROUGH.md               # 상세 작업 내역 및 히스토리 기록
+└── README.md                    # 프로젝트 개요 및 설치 가이드
 ```
 
 ## 🎯 주요 기능
