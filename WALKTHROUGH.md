@@ -330,11 +330,14 @@ stock_summary = stock_summary.nlargest(top_n, '총수익_만원')
 ## 🎉 프로젝트 최종 완성!
 
 ### 달성 사항
-✅ 키움증권 REST API 연동 및 4,000건 이상의 데이터 수집 완료
-✅ 구글 시트 저장 및 실시간 대시보드 연동 완료
-✅ **글래스모피즘 기반의 프리미엄 UI 리뉴얼 완료**
-✅ **3단계 정밀 드릴다운 분석 시스템 구축 완료**
-✅ 모든 UI 버그(폰트 깨짐, 스크롤 오프셋 등) 수정 및 최적화 완료
+- ✅ 키움증권 REST API 연동 및 4,000건 이상의 데이터 수집 완료
+- ✅ 구글 시트 저장 및 실시간 대시보드 연동 완료
+- ✅ **글래스모피즘 기반의 프리미엄 UI 리뉴얼 완료**
+- ✅ **3단계 정밀 드릴다운 분석 시스템 구축 완료**
+- ✅ 모든 UI 버그(폰트 깨짐, 스크롤 오프셋 등) 수정 및 최적화 완료
+
+---
 
 **구글 시트 URL**: https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID_HERE
-**GitHub 저장소**: https://github.com/20eung/Kiwoom-Profit-Visualizer (업로드 예정)
+
+**GitHub 저장소**: https://github.com/20eung/Kiwoom-Profit-Visualizer
