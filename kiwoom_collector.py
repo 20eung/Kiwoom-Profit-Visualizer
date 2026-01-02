@@ -9,7 +9,11 @@ import requests
 import pandas as pd
 from datetime import datetime, timedelta
 import json
-from config import KIWOOM_REST_API_BASE_URL
+try:
+    from config import KIWOOM_REST_API_BASE_URL
+except ImportError:
+    # config.py가 없는 경우(배포 환경 등) 기본값 사용
+    KIWOOM_REST_API_BASE_URL = "https://api.kiwoom.com"
 
 
 class KiwoomRestCollector:
@@ -259,7 +263,20 @@ def main():
     """메인 실행 함수"""
     import sys
     import argparse
-    from config import KIWOOM_APP_KEY, KIWOOM_APP_SECRET, KIWOOM_ACCOUNT
+    try:
+        from config import KIWOOM_APP_KEY, KIWOOM_APP_SECRET, KIWOOM_ACCOUNT
+    except ImportError:
+        # 배포 환경에서는 streamlit secrets에서 로드 시도
+        try:
+            import streamlit as st
+            kiwoom_secrets = st.secrets.get("kiwoom", {})
+            KIWOOM_APP_KEY = kiwoom_secrets.get("app_key", "")
+            KIWOOM_APP_SECRET = kiwoom_secrets.get("app_secret", "")
+            KIWOOM_ACCOUNT = kiwoom_secrets.get("account", "")
+        except:
+            KIWOOM_APP_KEY = ""
+            KIWOOM_APP_SECRET = ""
+            KIWOOM_ACCOUNT = ""
     
     print("=" * 50)
     print("키움증권 REST API 실현손익 데이터 수집기")
