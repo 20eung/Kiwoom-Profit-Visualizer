@@ -1,0 +1,7 @@
+# 윈도우 환경용 패키지 (64비트 Python 사용 가능)
+# pip install -r requirements_windows.txt
+
+requests>=2.31.0
+pandas>=2.0.0
+gspread>=5.11.0
+google-auth>=2.23.0

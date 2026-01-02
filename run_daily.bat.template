@@ -1,0 +1,18 @@
+"""
+윈도우 작업 스케줄러용 배치 파일 예시
+
+매일 자동으로 키움 REST API 데이터를 수집하여 구글 시트에 저장합니다.
+64비트 Python 사용 가능합니다.
+"""
+
+# 사용 방법:
+# 1. 이 파일을 .bat 파일로 저장 (예: run_daily.bat)
+# 2. config.py에 App Key, App Secret, 계좌번호 설정
+# 3. 윈도우 작업 스케줄러에 등록
+# 4. 매일 원하는 시간에 자동 실행
+
+@echo off
+cd /d %~dp0
+call venv\Scripts\activate.bat
+python run_pipeline.py --credentials credentials.json
+pause
