@@ -7,8 +7,27 @@
 import sys
 from kiwoom_collector import KiwoomRestCollector
 from google_sheet_manager import GoogleSheetManager
-from config import GOOGLE_SHEET_NAME, WORKSHEET_NAME
-from config import KIWOOM_APP_KEY, KIWOOM_APP_SECRET, KIWOOM_ACCOUNT
+try:
+    from config import GOOGLE_SHEET_NAME, WORKSHEET_NAME
+    from config import KIWOOM_APP_KEY, KIWOOM_APP_SECRET, KIWOOM_ACCOUNT
+except ImportError:
+    # config.py가 없는 경우 기본값 및 Streamlit Secrets 활용
+    GOOGLE_SHEET_NAME = "키움_실현손익_데이터"
+    WORKSHEET_NAME = "실현손익"
+    KIWOOM_APP_KEY = ""
+    KIWOOM_APP_SECRET = ""
+    KIWOOM_ACCOUNT = ""
+    
+    try:
+        import streamlit as st
+        if "kiwoom" in st.secrets:
+            KIWOOM_APP_KEY = st.secrets["kiwoom"].get("app_key", "")
+            KIWOOM_APP_SECRET = st.secrets["kiwoom"].get("app_secret", "")
+            KIWOOM_ACCOUNT = st.secrets["kiwoom"].get("account", "")
+        GOOGLE_SHEET_NAME = st.secrets.get("sheet_name", GOOGLE_SHEET_NAME)
+        WORKSHEET_NAME = st.secrets.get("worksheet_name", WORKSHEET_NAME)
+    except:
+        pass
 import argparse
 
 
