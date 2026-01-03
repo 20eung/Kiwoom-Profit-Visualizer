@@ -12,6 +12,7 @@ from google_sheet_manager import GoogleSheetManager
 from kiwoom_collector import KiwoomRestCollector
 from datetime import datetime, timedelta
 import time
+import requests
 
 
 # 페이지 설정
@@ -675,6 +676,15 @@ def main():
                 st.rerun()
         
         st.markdown('<div style="margin: 1.5rem 0; border-bottom: 1px solid rgba(0,0,0,0.05);"></div>', unsafe_allow_html=True)
+
+        # 3. 임시 IP 확인 (화이트리스트 설정용)
+        with st.expander("🌐 Cloud IP 확인 (임시)", expanded=False):
+            try:
+                current_ip = requests.get('https://api.ipify.org', timeout=5).text
+                st.code(current_ip, language="bash")
+                st.caption("위 IP를 키움 API 설정의 '허용 IP'에 등록해 주세요. (주의: 배포 시마다 바뀔 수 있음)")
+            except:
+                st.error("IP 정보를 가져올 수 없습니다.")
         
         # 프리미엄 네비게이션 메뉴
         st.markdown('<p style="font-weight: 600; color: var(--text-dim); margin-bottom: 0.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Navigation</p>', unsafe_allow_html=True)
