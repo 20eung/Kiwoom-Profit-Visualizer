@@ -160,6 +160,17 @@ class GoogleSheetManager:
                 self.worksheet.update(
                     [df_copy.columns.values.tolist()] + df_copy.values.tolist()
                 )
+                
+                # 금액 컬럼 서식 적용 (천 단위 구분 기호)
+                if '실현손익' in df_copy.columns:
+                    col_idx = df_copy.columns.get_loc('실현손익') + 1
+                    col_letter = chr(64 + col_idx) if col_idx <= 26 else "A" # 단순화된 계산
+                    # 더 정확한 컬럼 문자 계산 (gspread utils가 없을 경우 대비)
+                    from gspread.utils import rowcol_to_a1
+                    start_a1 = rowcol_to_a1(2, col_idx)
+                    end_a1 = rowcol_to_a1(len(df_copy) + 1, col_idx)
+                    self.worksheet.format(f"{start_a1}:{end_a1}", {"numberFormat": {"type": "NUMBER", "pattern": "#,##0"}})
+
                 print(f"✅ {len(df)}건의 데이터 저장 완료 (전체 교체)")
                 
             elif mode == 'append':
@@ -288,6 +299,17 @@ class GoogleSheetManager:
                 
                 # 시트에 업데이트
                 ws.update('A1', final_data)
+                
+                # --- [3] 서식 적용 (천 단위 구분 기호) ---
+                # 요약 테이블 금액 (C열)
+                summary_end_row = len(summary_data)
+                ws.format(f"C3:C{summary_end_row}", {"numberFormat": {"type": "NUMBER", "pattern": "#,##0"}})
+                
+                # 일별 상세 내역 금액 (B, C열)
+                detail_start_row = summary_end_row + 3 # Header 2줄 + 빈 줄 1줄 다음
+                detail_end_row = detail_start_row + len(detail_rows) - 1
+                ws.format(f"B{detail_start_row}:C{detail_end_row}", {"numberFormat": {"type": "NUMBER", "pattern": "#,##0"}})
+                
                 print(f"✅ 연도별 시트 업데이트 완료: {ws_name}")
 
         except Exception as e:
