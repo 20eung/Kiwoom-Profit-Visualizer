@@ -211,12 +211,87 @@ class GoogleSheetManager:
             
             if result:
                 print(f"✅ Upsert 완료: 기존 {len(existing_df)}건 + 신규 {len(new_df)}건 = 총 {len(merged_df)}건")
+                # 연도별 요약 시트 업데이트 실행
+                self.update_yearly_summaries(merged_df)
             
             return result
             
         except Exception as e:
             print(f"❌ Upsert 실패: {e}")
             return False
+
+    def update_yearly_summaries(self, df):
+        """연도별 요약 시트 생성 및 업데이트"""
+        if df is None or df.empty:
+            return
+            
+        try:
+            df_copy = df.copy()
+            df_copy['날짜'] = pd.to_datetime(df_copy['날짜'])
+            df_copy['연도'] = df_copy['날짜'].dt.year
+            df_copy['월'] = df_copy['날짜'].dt.month
+            df_copy['분기'] = df_copy['날짜'].dt.quarter
+            
+            # 연도별로 처리
+            for year in sorted(df_copy['연도'].unique(), reverse=True):
+                year_df = df_copy[df_copy['연도'] == year].copy()
+                ws_name = str(year)
+                
+                # 워크시트 열기 또는 생성
+                try:
+                    ws = self.sheet.worksheet(ws_name)
+                    ws.clear()
+                except gspread.WorksheetNotFound:
+                    ws = self.sheet.add_worksheet(title=ws_name, rows=1000, cols=10)
+                
+                # --- [1] 상단 요약 테이블 생성 ---
+                # 월별 합계
+                monthly = year_df.groupby('월')['실현손익'].sum().reset_index()
+                # 분기별 합계
+                quarterly = year_df.groupby('분기')['실현손익'].sum().reset_index()
+                # 연간 합계
+                yearly_total = year_df['실현손익'].sum()
+                
+                summary_data = [
+                    [f"📊 {year}년 성과 요약", "", "", ""],
+                    ["구분", "기간/월", "실현손익", "비고"],
+                    ["연간합계", "전체", yearly_total, ""],
+                ]
+                
+                # 분기 데이터 추가
+                for _, row in quarterly.iterrows():
+                    summary_data.append(["분기합계", f"{int(row['분기'])}분기", row['실현손익'], ""])
+                
+                # 월별 데이터 추가 (가로로 가독성 좋게 하거나 세로로 나열)
+                for _, row in monthly.iterrows():
+                    summary_data.append(["월별합계", f"{int(row['월'])}월", row['실현손익'], ""])
+                
+                summary_data.append(["", "", "", ""]) # 빈 줄
+                
+                # --- [2] 하단 일별 상세 데이터 생성 ---
+                daily_stats = year_df.groupby(year_df['날짜'].dt.date)['실현손익'].sum().reset_index()
+                daily_stats.columns = ['날짜', '당일손익']
+                daily_stats = daily_stats.sort_values('날짜') # 누적 계산을 위해 오름차순
+                daily_stats['누적손익'] = daily_stats['당일손익'].cumsum()
+                daily_stats = daily_stats.sort_values('날짜', ascending=False) # 시트 표시를 위해 최신순
+                
+                detail_header = ["📅 일별 상세 내역", "", ""]
+                detail_columns = ["날짜", "당일손익", "누적손익"]
+                detail_rows = daily_stats.values.tolist()
+                
+                # 날짜 포맷 변경
+                for r in detail_rows:
+                    r[0] = r[0].strftime('%Y-%m-%d')
+                
+                # 전체 데이터 조합
+                final_data = summary_data + [detail_header, detail_columns] + detail_rows
+                
+                # 시트에 업데이트
+                ws.update('A1', final_data)
+                print(f"✅ 연도별 시트 업데이트 완료: {ws_name}")
+
+        except Exception as e:
+            print(f"❌ 연도별 요약 업데이트 실패: {e}")
 
 
 def main():
