@@ -678,7 +678,7 @@ def main():
         st.markdown('<div style="margin: 1.5rem 0; border-bottom: 1px solid rgba(0,0,0,0.05);"></div>', unsafe_allow_html=True)
 
         # 3. 임시 IP 확인 (화이트리스트 설정용)
-        with st.expander("🌐 Cloud IP 확인 (임시)", expanded=False):
+        with st.expander("🌐 Cloud IP 확인", expanded=False):
             try:
                 current_ip = requests.get('https://api.ipify.org', timeout=5).text
                 st.code(current_ip, language="bash")
