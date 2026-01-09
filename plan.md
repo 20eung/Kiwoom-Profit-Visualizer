@@ -1,23 +1,51 @@
-# Role: 당신은 키움증권 REST API와 구글 클라우드 환경에 정통한 '시니어 에이전트 개발자'입니다.
-# Goal: 키움 REST API 데이터를 구글 시트에 저장하고, 이를 서버리스 웹(Streamlit)으로 시각화하는 전체 파이프라인을 구축하세요.
+# 구현 계획 - Kiwoom API ka10170 전환
 
-지금부터 다음 단계에 따라 프로젝트를 자율적으로 수행하고 보고하세요.
+`kiwoom_collector.py`를 업데이트하여 `ka10073` 대신 `ka10170` API ID를 사용하도록 변경합니다. 이 API는 `tot_pl_amt`(총손익금액)을 포함한 "당일매매일지" 데이터를 제공합니다.
 
-### 1단계: 계획 수립 및 체크리스트 작성
-- OS 무관(키움 REST API), 구글 시트(DB), Streamlit Cloud(시각화)를 연결하는 전체 아키텍처를 설계하십시오.
-- 구현에 필요한 필수 라이브러리(requests, gspread, streamlit 등)와 준비사항 체크리스트를 먼저 출력하세요.
+## 사용자 검토 필요 사항
+> [!IMPORTANT]
+> 제공해주신 이미지를 바탕으로 요청 파라미터를 구성했습니다. `ottks_tp`(단주구분)는 '1'(당일매수에 대한 당일매도), `ch_crd_tp`(현금신용구분)는 '0'(전체)으로 설정할 예정입니다. 이 설정이 의도와 다르다면 알려주세요.
 
-### 2단계: 환경 구축 및 코딩 (Code Generation)
-- [데이터 수집]: 64비트 Python 환경에서 키움 REST API OAuth 인증 및 실현손익 추출 코드를 작성하십시오.
-- [데이터 저장]: gspread를 이용해 구글 시트로 데이터를 Upsert(날짜 기준 업데이트)하는 모듈을 작성하십시오.
-- [데이터 시각화]: 구글 시트를 연동하여 누적 수익 차트와 요약 통계를 보여주는 Streamlit 코드를 작성하십시오.
+## 변경 제안
 
-### 3단계: 자율 점검 및 디버깅 (Self-Correction)
-- 작성한 코드에서 발생할 수 있는 잠재적 오류(API 토큰 만료, 구글 권한 오류, 데이터 형식 불일치 등)를 스스로 점검하십시오.
-- 'Antigravity Browser Control'과 'Terminal'을 활용하여 구동 가능 여부를 시뮬레이션하고, 오류가 있다면 즉시 수정하십시오.
+### Kiwoom Collector (`kiwoom_collector.py`)
+- `get_realized_profit` 함수는 단일 날짜(`base_date`) 조회로 변경되었습니다 (완료).
+- `_clean_dataframe` 매핑 업데이트 완료.
 
-### 4단계: 최종 결과물 및 배포 가이드
-- 모든 코드가 포함된 완성된 파일을 생성하십시오.
-- 제가 외부(모바일)에서 접속할 수 있도록 Streamlit Cloud에 배포하는 구체적인 절차를 마지막으로 안내하십시오.
+### Run Pipeline (`run_pipeline.py`)
+- **반복 조회 로직 추가**:
+    - `start_date`와 `end_date`를 인자로 받아, 해당 기간 동안 반복문을 돌며 `kiwoom_collector.get_realized_profit(base_date=...)`를 호출합니다.
+    - 조회된 일별 DataFrame을 하나로 합칩니다 (`pd.concat`).
+    - 합쳐진 전체 데이터를 `GoogleSheetManager`를 통해 구글 시트에 업데이트합니다.
+- **기존 호환성**:
+    - `run_pipeline.py`의 인자는 `start-date`, `end-date`를 그대로 유지하여 사용자가 기간을 지정할 수 있게 합니다.
 
-"자, 이제 프로젝트를 시작하고 첫 번째 단계인 계획안부터 제시해 주세요."
+### [MODIFY] [run_pipeline.py](file:///Users/20eung/Project/Kiwoom-Profit-Visualizer/run_pipeline.py)
+- `KiwoomRestCollector` 호출부를 반복문으로 변경.
+- 조회된 데이터를 리스트에 모아 `concat`.
+- `upsert_data` 호출.
+
+### [MODIFY] [streamlit_app.py](file:///Users/20eung/Project/Kiwoom-Profit-Visualizer/streamlit_app.py)
+- **증분 동기화 로직 구현**:
+    - `sync_with_kiwoom` 함수 수정.
+    - 현재 로드된 데이터의 마지막 날짜(`df['날짜'].max()`)를 확인.
+    - 시작일: `마지막 날짜 + 1일` (데이터가 없으면 2024.01.01).
+    - 종료일: `오늘`.
+    - 해당 기간 동안 반복문으로 `get_realized_profit(base_date=...)` 호출.
+    - 수집된 데이터를 구글 시트에 `upsert`.
+- **호환성 수정**: `get_realized_profit` 인자 변경 대응.
+
+## 데이터 저장 스키마
+`ka10170` API를 사용하면 다음과 같은 정보가 저장됩니다:
+- **기존 컬럼 유지**: `날짜`, `종목명`, `종목코드`, `실현손익`, `수익률`
+- **변경/추가 컬럼**:
+    - `체결가` -> `매도평균가`, `매수평균가`
+    - `체결량` -> `매도수량`, `매수수량`
+    - `매도금액`, `매수금액`, `수수료_제세금`
+> **참고**: 사용자가 "일자별 손익현황만 필요하다"고 했지만, 기존 `streamlit_app`의 "종목별 수익 현황" 차트를 유지하기 위해 **상세 내역(Transaction)** 형태로 저장하는 것이 유리합니다. 일자별 합계는 이 데이터를 기반으로 시각화 단계에서 계산됩니다. API 응답에 날짜가 없을 경우 `base_date`를 `날짜` 컬럼으로 강제 주입합니다.
+
+## 검증 계획
+
+### 자동화 테스트
+- `python kiwoom_collector.py`를 실행하여 로그 출력을 확인합니다.
+- `tot_pl_amt` 값이 정상적으로 출력되고 CSV에 저장되는지 확인합니다.

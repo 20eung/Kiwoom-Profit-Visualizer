@@ -335,20 +335,78 @@ def sync_with_kiwoom():
                 status.update(label="❌ 키움 API 인증 실패", state="error")
                 return False
                 
-            # 3. 데이터 수집 (최근 15일치 수집하여 안전성 확보)
-            status.write("📥 최신 실현손익 데이터 수집 중...")
-            end_date = datetime.now().strftime("%Y%m%d")
-            start_date = (datetime.now() - timedelta(days=15)).strftime("%Y%m%d")
+            # 3. 데이터 수집 (증분 동기화)
+            status.write("📥 데이터 수집 준비 중...")
             
-            new_df = collector.get_realized_profit(start_date=start_date, end_date=end_date)
+            # 마지막 데이터 날짜 확인
+            last_date = None
+            try:
+                # 현재 로드된 데이터를 다시 확인 (캐시 무시 가능성 고려)
+                df = load_data()
+                if df is not None and not df.empty and '날짜' in df.columns:
+                    last_date = df['날짜'].max()
+            except:
+                pass
             
-            if new_df is None or new_df.empty:
-                status.update(label="⚠️ 수집된 새로운 데이터가 없습니다.", state="complete")
+            if last_date:
+                start_dt = last_date + timedelta(days=1)
+            else:
+                # 데이터가 없으면 2024년 1월 1일부터 시작
+                start_dt = datetime(2024, 1, 1)
+            
+            end_dt = datetime.now()
+            
+            # 미래 날짜는 제외
+            if start_dt > end_dt:
+                status.update(label="✅ 이미 최신 상태입니다.", state="complete")
                 time.sleep(2)
                 status_placeholder.empty()
                 return True
+            
+            start_date_str = start_dt.strftime("%Y%m%d")
+            end_date_str = end_dt.strftime("%Y%m%d")
+            
+            status.write(f"📥 데이터 수집 중... ({start_date_str} ~ {end_date_str})")
+            
+            all_new_dfs = []
+            current_dt = start_dt
+            
+            # 진행률 바
+            progress_bar = status_placeholder.progress(0)
+            total_days = (end_dt - start_dt).days + 1
+            processed_days = 0
+            
+            while current_dt <= end_dt:
+                base_date = current_dt.strftime("%Y%m%d")
+                
+                # 진행 상황 업데이트 (너무 빈번하지 않게)
+                if processed_days % 5 == 0:
+                     status.write(f"📥 수집 중... {base_date}")
+                
+                df_daily = collector.get_realized_profit(base_date=base_date)
+                
+                if df_daily is not None and not df_daily.empty:
+                    all_new_dfs.append(df_daily)
+                
+                current_dt += timedelta(days=1)
+                processed_days += 1
+                progress_bar.progress(processed_days / total_days)
+                
+                # API 부하 조절
+                time.sleep(0.2)
+            
+            progress_bar.empty()
+            
+            if not all_new_dfs:
+                status.update(label="⚠️ 해당 기간에 새로운 거래 내역이 없습니다.", state="complete")
+                time.sleep(2)
+                status_placeholder.empty()
+                return True
+                
+            # 전체 병합
+            new_df = pd.concat(all_new_dfs, ignore_index=True)
 
-            status.write(f"✅ {len(new_df)}건의 데이터 수집 완료")
+            status.write(f"✅ {len(new_df)}건의 새로운 데이터 수집 완료")
             
             # 4. 구글 시트 저장
             status.write("💾 구글 시트에 데이터 업로드 중...")
@@ -360,7 +418,7 @@ def sync_with_kiwoom():
             
             if sheet_manager.open_sheet(sheet_name, worksheet_name):
                 if sheet_manager.upsert_data(new_df, key_column='날짜'):
-                    status.update(label="🎉 동기화 성공! 대시보드를 갱신합니다.", state="complete")
+                    status.update(label=f"🎉 {len(new_df)}건 동기화 성공! 대시보드를 갱신합니다.", state="complete")
                     st.cache_data.clear()
                     time.sleep(2)
                     status_placeholder.empty()

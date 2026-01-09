@@ -68,16 +68,59 @@ def main():
             print("❌ 인증 실패. 프로그램을 종료합니다.")
             return
         
-        df = collector.get_realized_profit(
-            start_date=args.start_date,
-            end_date=args.end_date
-        )
+        # 날짜 범위 설정
+        from datetime import datetime, timedelta
+        import pandas as pd
+        import time
+
+        end_date_str = args.end_date if args.end_date else datetime.now().strftime("%Y%m%d")
+        start_date_str = args.start_date if args.start_date else end_date_str
+        
+        # 반복 수집
+        print(f"📥 데이터 수집 기간: {start_date_str} ~ {end_date_str}")
+        
+        start_dt = datetime.strptime(start_date_str, "%Y%m%d")
+        end_dt = datetime.strptime(end_date_str, "%Y%m%d")
+        
+        all_dfs = []
+        current_dt = start_dt
+        
+        while current_dt <= end_dt:
+            base_date = current_dt.strftime("%Y%m%d")
+            
+            # 주말/휴일 체크 로직은 없지만, API가 빈 데이터를 반환하므로 그대로 진행
+            # 너무 빠른 요청 방지를 위해 약간의 딜레이
+            if len(all_dfs) > 0:
+                time.sleep(0.5) 
+                
+            df_daily = collector.get_realized_profit(base_date=base_date)
+            
+            if df_daily is not None and not df_daily.empty:
+                all_dfs.append(df_daily)
+            
+            current_dt += timedelta(days=1)
+            
+        if not all_dfs:
+             print("❌ 수집된 데이터가 없습니다.")
+             return
+             
+        # 전체 데이터 병합
+        df = pd.concat(all_dfs, ignore_index=True)
+         
     
     if df is None or df.empty:
         print("❌ 데이터를 가져올 수 없습니다.")
         return
     
-    print(f"✅ {len(df)}건의 데이터 수집 완료")
+    print(f"✅ 총 {len(df)}건의 데이터 수집 완료 (기간 합계)")
+    
+    # CSV 파일로 저장 (백업용)
+    csv_filename = "collected_data.csv"
+    try:
+        df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
+        print(f"💾 로컬 파일 저장 완료: {csv_filename}")
+    except Exception as e:
+        print(f"⚠️ 로컬 파일 저장 실패: {e}")
     
     # 2단계: 구글 시트에 저장
     print("\n[2단계] 구글 시트에 저장")

@@ -100,14 +100,13 @@ class KiwoomRestCollector:
         
         return True
     
-    def get_realized_profit(self, start_date=None, end_date=None, stock_code=""):
+    def get_realized_profit(self, base_date=None):
         """
-        일자별종목별실현손익요청_기간 (ka10073)
+        일자별 실현손익 요청 (ka10073)
+        Overnight 매도 건에 대한 정확한 손익 계산을 위해 ka10073 사용
         
         Args:
-            start_date: 조회 시작일 (YYYYMMDD), None이면 오늘
-            end_date: 조회 종료일 (YYYYMMDD), None이면 오늘
-            stock_code: 종목코드 (선택, 빈 문자열이면 전체)
+            base_date: 기준일자 (YYYYMMDD), None이면 오늘
             
         Returns:
             DataFrame: 실현손익 데이터
@@ -117,26 +116,28 @@ class KiwoomRestCollector:
             return None
         
         # 날짜 설정
-        if not end_date:
-            end_date = datetime.now().strftime("%Y%m%d")
-        if not start_date:
-            start_date = end_date
+        if not base_date:
+            base_date = datetime.now().strftime("%Y%m%d")
         
         try:
-            print(f"📥 실현손익 조회 중... ({start_date} ~ {end_date})")
+            print(f"📥 실현손익 조회 중... (기준일: {base_date})")
             
             url = f"{self.base_url}/api/dostk/acnt"
             
             headers = {
                 "Content-Type": "application/json;charset=UTF-8",
-                "api-id": "ka10073",  # TR 코드
+                "api-id": "ka10073",
                 "authorization": f"Bearer {self.access_token}"
             }
             
+            # ka10073 파라미터 (일자별 조회)
             body = {
-                "stk_cd": stock_code,  # 종목코드 (빈 문자열이면 전체)
-                "strt_dt": start_date,  # 시작일자 (YYYYMMDD)
-                "end_dt": end_date  # 종료일자 (YYYYMMDD)
+                "acnt_no": self.account_number,
+                "strt_dt": base_date,
+                "end_dt": base_date,
+                "sll_buy_dvsn_cd": "0", # 0:전체
+                "inqr_dvsn": "0",       # 0:일별
+                "stk_cd": ""            # 전체 종목
             }
             
             # 연속조회 처리
@@ -155,20 +156,19 @@ class KiwoomRestCollector:
                 if response.status_code == 200:
                     data = response.json()
                     
-                    # 응답 데이터 확인
                     if "dt_stk_rlzt_pl" in data:
                         records = data["dt_stk_rlzt_pl"]
                         if records:
                             all_data.extend(records)
                         
-                        # 연속조회 여부 확인
                         cont_yn = response.headers.get("cont-yn", "")
                         next_key = response.headers.get("next-key", "")
                         
                         if cont_yn != "Y":
                             break
                     else:
-                        print(f"⚠️ 예상치 못한 응답 형식: {data}")
+                        if "msg_cd" in data and data["msg_cd"] != "OPW00001":
+                             print(f"ℹ️ 데이터가 없거나 다른 응답 형식 (ka10073): {data}")
                         break
                 else:
                     print(f"❌ API 요청 실패: {response.status_code}")
@@ -176,14 +176,14 @@ class KiwoomRestCollector:
                     return None
             
             if not all_data:
-                print("⚠️ 조회된 데이터가 없습니다.")
+                print("⚠️ 조회된 실현손익 내역이 없습니다.")
                 return pd.DataFrame()
             
             # DataFrame 변환
             df = pd.DataFrame(all_data)
             df = self._clean_dataframe(df)
             
-            print(f"✅ {len(df)}건의 데이터 조회 완료")
+            print(f"✅ {len(df)}건의 실현손익 내역 조회 완료")
             return df
                 
         except Exception as e:
@@ -199,10 +199,16 @@ class KiwoomRestCollector:
             'dt': '날짜',
             'stk_nm': '종목명',
             'stk_cd': '종목코드',
-            'cntr_pric': '체결가',
-            'cntr_qty': '체결량',
+            
+            # ka10073 Response Key Mapping
+            'buy_uv': '매수평균가',   # 매수단가
+            'cntr_pric': '매도평균가', # 체결가(매도단가)
+            'cntr_qty': '매도수량',    # 체결량
             'tdy_sel_pl': '실현손익',
             'pl_rt': '수익률',
+            'tdy_trde_cmsn': '수수료',
+            'tdy_trde_tax': '제세금'
+            # 매수수량, 매수금액, 매도금액은 계산 필요
         }
         
         # 존재하는 컬럼만 선택
@@ -220,24 +226,45 @@ class KiwoomRestCollector:
         if '날짜' in df.columns:
             df['날짜'] = pd.to_datetime(df['날짜'], format='%Y%m%d', errors='coerce')
         
-        if '체결가' in df.columns:
-            df['체결가'] = pd.to_numeric(df['체결가'], errors='coerce')
-        
-        if '체결량' in df.columns:
-            df['체결량'] = pd.to_numeric(df['체결량'], errors='coerce')
-        
-        if '실현손익' in df.columns:
-            df['실현손익'] = pd.to_numeric(df['실현손익'], errors='coerce')
+        # 숫자 변환 (콤마 제거 포함)
+        numeric_cols = ['매수평균가', '매도평균가', '매도수량', '실현손익', '수수료', '제세금']
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.replace(',', '').apply(pd.to_numeric, errors='coerce')
+
+        # 수익률 처리
+        if '수익률' in df.columns:
+            df['수익률'] = df['수익률'].astype(str).str.replace('+', '').str.replace('%', '')
+            df['수익률'] = pd.to_numeric(df['수익률'], errors='coerce')
+            
+        # 파생 컬럼 계산
+        if '매도수량' in df.columns:
+             df['매수수량'] = df['매도수량'] # 실현손익이므로 매수량=매도량
+             
+             if '매수평균가' in df.columns:
+                 df['매수금액'] = df['매수평균가'] * df['매수수량']
+             
+             if '매도평균가' in df.columns:
+                 df['매도금액'] = df['매도평균가'] * df['매도수량']
+                 
+        if '수수료' in df.columns and '제세금' in df.columns:
+            df['수수료_제세금'] = df['수수료'].fillna(0) + df['제세금'].fillna(0)
+            
+        return df
         
         if '수익률' in df.columns:
             # +61.28 형식에서 숫자만 추출
             df['수익률'] = df['수익률'].astype(str).str.replace('+', '').str.replace('%', '')
             df['수익률'] = pd.to_numeric(df['수익률'], errors='coerce')
         
-        # 종목코드에서 'A' 제거 (A005930 -> 005930)
         if '종목코드' in df.columns:
             df['종목코드'] = df['종목코드'].astype(str).str.replace('A', '', regex=False)
-        
+            
+        # 매도수량이 0이거나 없는 데이터(순수 매수 내역) 필터링
+        # 실현손익은 '매도'가 발생했을 때만 의미가 있음
+        if '매도수량' in df.columns:
+            df = df[df['매도수량'] > 0].copy()
+            
         return df
     
     def get_sample_data(self):
@@ -287,8 +314,7 @@ def main():
     parser.add_argument('--app-key', type=str, default=KIWOOM_APP_KEY, help='App Key')
     parser.add_argument('--app-secret', type=str, default=KIWOOM_APP_SECRET, help='App Secret')
     parser.add_argument('--account', type=str, default=KIWOOM_ACCOUNT, help='계좌번호')
-    parser.add_argument('--start-date', type=str, default=None, help='시작일자 (YYYYMMDD)')
-    parser.add_argument('--end-date', type=str, default=None, help='종료일자 (YYYYMMDD)')
+    parser.add_argument('--base-date', type=str, default=None, help='기준일자 (YYYYMMDD)')
     args = parser.parse_args()
     
     if args.test:
@@ -310,8 +336,7 @@ def main():
         
         # 실현손익 조회
         df = collector.get_realized_profit(
-            start_date=args.start_date,
-            end_date=args.end_date
+            base_date=args.base_date
         )
     
     if df is not None and not df.empty:

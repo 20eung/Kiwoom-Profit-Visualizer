@@ -1,0 +1,14 @@
+# 작업 목록
+- [x] `ka10073`에서 `ka10170`으로 전환하기 위한 구현 계획 수립 <!-- id: 1 -->
+- [x] `kiwoom_collector.py` 수정: API ID `ka10170` 사용 및 `tot_pl_amt` 파싱 <!-- id: 2 -->
+- [x] 변경 사항 검증 <!-- id: 3 -->
+- [x] Implement batch data collection (loop from 2024 to present). <!-- id: 5 -->
+- [x] Integrate/Update Google Sheet upload functionality. <!-- id: 6 -->
+- [x] `run_pipeline.py`에 CSV 백업 기능 및 배치 수집 로직 구현 <!-- id: 7 -->
+- [x] `streamlit_app.py`에 증분 동기화 로직 구현 <!-- id: 8 -->
+- [x] 구글 시트 업로드 시 `NaN` 값 처리 로직 추가 (`google_sheet_manager.py`) <!-- id: 9 -->
+- [x] Investigate realized profit discrepancy (zero values) <!-- id: 10 -->
+- [x] Re-analyze API docs: Identify `ka10073` vs `ka10170` differences <!-- id: 11 -->
+- [x] Switch back to `ka10073` for accurate overnight P&L calculation <!-- id: 12 -->
+- [x] Analyze HTS vs API P&L discrepancy (Credit Interest identified) <!-- id: 13 -->
+- [x] Finalize `walkthrough.md` and upload to GitHub <!-- id: 14 -->

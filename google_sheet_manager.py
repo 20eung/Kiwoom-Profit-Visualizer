@@ -197,6 +197,9 @@ class GoogleSheetManager:
             return False
         
         try:
+            # NaN 값 처리 (JSON 호환성 문제 해결)
+            new_df = new_df.fillna('')
+            
             # 기존 데이터 읽기
             existing_df = self.read_data()
             
@@ -239,6 +242,11 @@ class GoogleSheetManager:
         try:
             df_copy = df.copy()
             df_copy['날짜'] = pd.to_datetime(df_copy['날짜'])
+            
+            # 실현손익 컬럼 숫자형으로 변환 (빈 문자열 등 처리)
+            if '실현손익' in df_copy.columns:
+                df_copy['실현손익'] = pd.to_numeric(df_copy['실현손익'], errors='coerce').fillna(0)
+            
             df_copy['연도'] = df_copy['날짜'].dt.year
             df_copy['월'] = df_copy['날짜'].dt.month
             df_copy['분기'] = df_copy['날짜'].dt.quarter
@@ -260,9 +268,25 @@ class GoogleSheetManager:
                 monthly = year_df.groupby('월')['실현손익'].sum().reset_index()
                 # 분기별 합계
                 quarterly = year_df.groupby('분기')['실현손익'].sum().reset_index()
+                
                 # 연간 합계
                 yearly_total = year_df['실현손익'].sum()
+
+                # 요약 정보 계산
+                monthly_summary = year_df.groupby('월').agg({
+                    '실현손익': 'sum',
+                    '수수료_제세금': 'sum',
+                    '매수금액': 'sum',
+                    '매도금액': 'sum',
+                    '수익률': 'mean' # 수익률은 평균으로 계산 (가중평균이 더 정확하겠지만 일단 단순 평균)
+                }).reset_index()
                 
+                # int64 -> int, float64 -> float 변환 (JSON 직렬화 문제 해결)
+                monthly_summary = monthly_summary.astype(object)
+                for col in monthly_summary.columns:
+                     monthly_summary[col] = monthly_summary[col].apply(lambda x: x.item() if hasattr(x, 'item') else x)
+                
+                # 월별 요약 저장
                 summary_data = [
                     [f"📊 {year}년 성과 요약", "", "", ""],
                     ["구분", "기간/월", "실현손익", "비고"],
