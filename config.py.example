@@ -8,8 +8,12 @@
 """
 
 # 구글 시트 설정
-GOOGLE_SHEET_NAME = "키움_실현손익_데이터"  # 구글 시트 이름
+GOOGLE_SHEET_NAME = "주식실현손익"  # 구글 시트 이름
 WORKSHEET_NAME = "실현손익"  # 워크시트 이름
+
+# 텔레그램 알림 설정
+TELEGRAM_BOT_TOKEN = ""
+TELEGRAM_CHAT_ID = ""  # 워크시트 이름
 
 # 데이터 컬럼 정의
 COLUMNS = [
